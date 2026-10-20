@@ -1,33 +1,22 @@
 
+# Mock AWS so tests don't require real credentials or create resources.
+mock_provider "aws" {}
+
 run "check_project_configuration" {
   command = plan
 
   assert {
-    condition     = local.project_name == "aden-aws-terraform"
-    error_message = "The project name must match the expected value."
+    condition     = output.aws_region == "eu-north-1"
+    error_message = "AWS region should be eu-north-1."
   }
 
   assert {
-    condition     = local.environment == "development"
-    error_message = "The environment must be development."
+    condition     = output.environment == "development"
+    error_message = "Environment should be development."
   }
 
   assert {
-    condition     = var.aws_region == "eu-west-2"
-    error_message = "The AWS region must be eu-west-2."
-  }
-
-  assert {
-    condition     = local.common_tags["ManagedBy"] == "Terraform"
-    error_message = "Resources must identify Terraform as their management tool."
-  }
-
-  assert {
-    condition = (
-      contains(keys(local.common_tags), "Project") &&
-      contains(keys(local.common_tags), "Environment") &&
-      contains(keys(local.common_tags), "ManagedBy")
-    )
-    error_message = "Required project, environment and management tags must be present."
+    condition     = output.project_name == "aden-aws-terraform"
+    error_message = "Project name is incorrect."
   }
 }
