@@ -1,0 +1,48 @@
+{
+    "Subnets": [
+        {
+            "AvailabilityZoneId": "eun1-az1",
+            "MapCustomerOwnedIpOnLaunch": false,
+            "OwnerId": "657092010884",
+            "AssignIpv6AddressOnCreation": false,
+            "Ipv6CidrBlockAssociationSet": [],
+            "Tags": [
+                {
+                    "Key": "Environment",
+                    "Value": "development"
+                },
+                {
+                    "Key": "ManagedBy",
+                    "Value": "Terraform"
+                },
+                {
+                    "Key": "Project",
+                    "Value": "aden-aws-terraform"
+                },
+                {
+                    "Key": "Name",
+                    "Value": "aden-aws-terraform-public-subnet"
+                }
+            ],
+            "SubnetArn": "arn:aws:ec2:eu-north-1:657092010884:subnet/subnet-0d04517a4c6983ced",
+            "EnableDns64": false,
+            "Ipv6Native": false,
+            "PrivateDnsNameOptionsOnLaunch": {
+                "HostnameType": "ip-name",
+                "EnableResourceNameDnsARecord": false,
+                "EnableResourceNameDnsAAAARecord": false
+            },
+            "BlockPublicAccessStates": {
+                "InternetGatewayBlockMode": "off"
+            },
+            "SubnetId": "subnet-0d04517a4c6983ced",
+            "State": "available",
+            "VpcId": "vpc-045c5a33e1b3d8979",
+            "CidrBlock": "10.0.1.0/24",
+            "AvailableIpAddressCount": 251,
+            "AvailabilityZone": "eu-north-1a",
+            "DefaultForAz": false,
+            "MapPublicIpOnLaunch": true
+        }
+    ]
+}

@@ -19,4 +19,19 @@ run "check_project_configuration" {
     condition     = output.project_name == "aden-aws-terraform"
     error_message = "Project name is incorrect."
   }
+
+  assert {
+    condition     = aws_cloudwatch_log_group.vpc_flow.retention_in_days == 365
+    error_message = "VPC flow logs should be retained for at least one year."
+  }
+
+  assert {
+    condition     = aws_kms_key.vpc_flow.enable_key_rotation
+    error_message = "The VPC flow log encryption key should have rotation enabled."
+  }
+
+  assert {
+    condition     = aws_flow_log.vpc.traffic_type == "ALL"
+    error_message = "VPC flow logs should capture all traffic."
+  }
 }

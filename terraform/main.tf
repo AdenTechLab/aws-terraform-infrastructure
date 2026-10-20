@@ -1,7 +1,8 @@
 
 locals {
-  project_name = "aden-aws-terraform"
-  environment  = "development"
+  project_name        = "aden-aws-terraform"
+  environment         = "development"
+  flow_log_group_name = "/aws/vpc/${local.project_name}/flow-logs"
 
   common_tags = {
     Project     = local.project_name
@@ -67,22 +68,55 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-#checkov:skip=CKV2_AWS_5:Security group is intentionally staged until the application resource is deployed.
-resource "aws_security_group" "app" {
-  name        = "${local.project_name}-app-sg"
-  description = "Security group for the application server"
-  vpc_id      = aws_vpc.main.id
+data "aws_caller_identity" "current" {}
 
-  # No ingress or egress rules until required by the application.
+resource "aws_kms_key" "vpc_flow" {
+  description             = "Encrypts VPC flow logs for ${local.project_name}"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
 
-  tags = merge(local.common_tags, {
-    Name = "${local.project_name}-app-sg"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableAccountAdministration"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCloudWatchLogsEncryption"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:*:log-group:${local.flow_log_group_name}"
+          }
+        }
+      }
+    ]
   })
+
+  tags = local.common_tags
 }
 
 resource "aws_cloudwatch_log_group" "vpc_flow" {
-  name              = "/aws/vpc/${local.project_name}/flow-logs"
-  retention_in_days = 7
+  name              = local.flow_log_group_name
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.vpc_flow.arn
 
   tags = local.common_tags
 }
@@ -110,16 +144,22 @@ resource "aws_iam_role_policy" "flow_logs" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams"
-      ]
-      Resource = "${aws_cloudwatch_log_group.vpc_flow.arn}:*"
-    }]
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "${aws_cloudwatch_log_group.vpc_flow.arn}:*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:DescribeLogGroups"]
+        Resource = "*"
+      }
+    ]
   })
 }
 
