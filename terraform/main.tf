@@ -10,7 +10,6 @@ locals {
   }
 }
 
-# Custom VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_support   = true
@@ -21,19 +20,27 @@ resource "aws_vpc" "main" {
   })
 }
 
-# Public subnet
+resource "aws_default_security_group" "default" {
+  vpc_id  = aws_vpc.main.id
+  ingress = []
+  egress  = []
+
+  tags = merge(local.common_tags, {
+    Name = "${local.project_name}-default-sg"
+  })
+}
+
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
   availability_zone       = "eu-north-1a"
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 
   tags = merge(local.common_tags, {
     Name = "${local.project_name}-public-subnet"
   })
 }
 
-# Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
@@ -42,7 +49,6 @@ resource "aws_internet_gateway" "main" {
   })
 }
 
-# Public route table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -56,28 +62,73 @@ resource "aws_route_table" "public" {
   })
 }
 
-# Associate public subnet with route table
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
 
-# Application security group
+#checkov:skip=CKV2_AWS_5:Security group is intentionally staged until the application resource is deployed.
 resource "aws_security_group" "app" {
   name        = "${local.project_name}-app-sg"
   description = "Security group for the application server"
   vpc_id      = aws_vpc.main.id
 
-  # No inbound rules are opened yet.
-  # Allow outbound traffic for updates and testing.
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # No ingress or egress rules until required by the application.
 
   tags = merge(local.common_tags, {
     Name = "${local.project_name}-app-sg"
   })
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow" {
+  name              = "/aws/vpc/${local.project_name}/flow-logs"
+  retention_in_days = 7
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role" "flow_logs" {
+  name = "${local.project_name}-flow-logs-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "vpc-flow-logs.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy" "flow_logs" {
+  name = "${local.project_name}-flow-logs-policy"
+  role = aws_iam_role.flow_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = "${aws_cloudwatch_log_group.vpc_flow.arn}:*"
+    }]
+  })
+}
+
+resource "aws_flow_log" "vpc" {
+  vpc_id               = aws_vpc.main.id
+  traffic_type         = "ALL"
+  log_destination_type = "cloud-watch-logs"
+  log_destination      = aws_cloudwatch_log_group.vpc_flow.arn
+  iam_role_arn         = aws_iam_role.flow_logs.arn
+
+  tags = local.common_tags
 }
