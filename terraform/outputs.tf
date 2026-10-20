@@ -1,6 +1,7 @@
-output "project_name" {
-  description = "Name of the Terraform project"
-  value       = local.project_name
+
+output "aws_region" {
+  description = "AWS deployment region"
+  value       = var.aws_region
 }
 
 output "environment" {
@@ -8,7 +9,32 @@ output "environment" {
   value       = local.environment
 }
 
-output "aws_region" {
-  description = "AWS region configured for deployment"
-  value       = var.aws_region
+output "project_name" {
+  description = "Project name"
+  value       = local.project_name
+}
+
+output "vpc_id" {
+  description = "ID of the custom VPC"
+  value       = aws_vpc.main.id
+}
+
+output "public_subnet_id" {
+  description = "ID of the public subnet"
+  value       = aws_subnet.public.id
+}
+
+output "internet_gateway_id" {
+  description = "ID of the Internet Gateway"
+  value       = aws_internet_gateway.main.id
+}
+
+output "public_route_table_id" {
+  description = "ID of the public route table"
+  value       = aws_route_table.public.id
+}
+
+output "app_security_group_id" {
+  description = "ID of the application security group"
+  value       = aws_security_group.app.id
 }
