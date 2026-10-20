@@ -2,21 +2,25 @@
 
 An Infrastructure as Code (IaC) portfolio project focused on AWS infrastructure design, Terraform automation, automated testing, security best practices and cost awareness.
 
-The project uses Terraform to define infrastructure configuration and GitHub Actions to automate formatting, validation, testing and security scanning.
+This project uses Terraform to provision AWS networking and security resources, while GitHub Actions automates formatting, validation, testing and infrastructure security scanning.
 
 ## Project Objectives
 
-- Define and manage infrastructure configuration using Terraform.
-- Use variables, outputs and reusable resource-tagging conventions.
-- Automate Terraform quality checks through GitHub Actions.
+- Define and manage AWS infrastructure using Terraform.
+- Build AWS networking resources using Infrastructure as Code.
+- Use variables, outputs and consistent resource-tagging conventions.
 - Apply security-first principles to infrastructure design.
+- Automate Terraform quality checks through GitHub Actions.
+- Test infrastructure configuration and scan for security misconfigurations.
 - Understand cloud permissions, deployment planning and cost controls.
-- Practise infrastructure testing and continuous integration.
 
 ## Technology Stack
 
 - **Cloud:** Amazon Web Services (AWS)
 - **Infrastructure as Code:** Terraform
+- **Networking:** Amazon VPC, Subnets, Internet Gateway and Route Tables
+- **Identity and Access Management:** AWS IAM
+- **Logging and Encryption:** Amazon CloudWatch, VPC Flow Logs and AWS KMS
 - **Version Control:** Git and GitHub
 - **CI/CD:** GitHub Actions
 - **Security Scanning:** Checkov
@@ -40,33 +44,46 @@ aws-terraform-infrastructure/
 └── README.md
 ```
 
-## Terraform Configuration
+## AWS Infrastructure
 
-The current configuration includes:
+The infrastructure is deployed in the **Europe (Stockholm) region (`eu-north-1`)**.
 
-- AWS provider configuration for the London region (`eu-west-2`).
-- Project and environment metadata.
-- Common tags for project identification and management.
-- Outputs for the project name, environment and AWS region.
-- Automated tests for project configuration and required tagging conventions.
+| Resource | Configuration |
+|---|---|
+| Amazon VPC | `10.0.0.0/16` |
+| Public subnet | `10.0.1.0/24` in `eu-north-1a` |
+| Internet Gateway | Attached to the VPC |
+| Route table | Default route to the Internet Gateway |
+| Default security group | Inbound and outbound rules restricted |
+| CloudWatch log group | VPC Flow Logs with 365-day retention |
+| AWS KMS | Dedicated encryption key with automatic rotation |
+| IAM role and policy | Scoped permissions for VPC Flow Logs |
+| VPC Flow Logs | Configured to capture all VPC traffic |
 
-The VPC and subnet configuration remains a planned infrastructure milestone. Deployment was blocked by an explicit AWS Organizations Service Control Policy (SCP) denying the required EC2 networking permissions.
+The subnet has automatic public IP assignment disabled. Although its route table includes a route to the Internet Gateway, resources in the subnet do not automatically receive public IP addresses.
+
+The application security group was removed because no application compute resource is currently deployed.
 
 ## Security and Cost Awareness
 
-Security and cost control are important considerations throughout the project.
+Security is integrated into the infrastructure configuration and automated workflow.
 
 - Terraform state files and sensitive variable files are excluded from version control.
 - AWS credentials are not stored in the repository.
-- GitHub Actions uses read-only repository permissions for CI.
-- Terraform configuration is checked before deployment.
-- Checkov scans the Terraform configuration for potential security issues.
-- AWS permissions and service restrictions are reviewed before deployment.
-- The AWS account is kept on its existing Free plan.
+- GitHub Actions runs configuration validation and tests without requiring AWS credentials.
+- Checkov scans Terraform resources for potential security misconfigurations.
+- VPC Flow Logs use a dedicated KMS key with automatic rotation enabled.
+- CloudWatch log retention is configured for 365 days.
+- IAM permissions for flow logging are scoped to the required operations.
+- The default security group is configured without inbound or outbound rules.
+- AWS permissions and organisational restrictions are considered before infrastructure changes.
+- Resource usage and ongoing AWS charges are reviewed as part of cost awareness.
+
+**Cost consideration:** KMS keys, CloudWatch log ingestion and log storage may incur charges. Actual costs depend on usage and applicable AWS pricing.
 
 ## Continuous Integration
 
-GitHub Actions automatically runs checks when changes are pushed to the `main` branch or when a pull request targets `main`.
+GitHub Actions automates infrastructure quality and security checks when changes are pushed or pull requests target the `main` branch.
 
 The workflow includes:
 
@@ -76,47 +93,45 @@ The workflow includes:
 4. Automated Terraform tests.
 5. Checkov infrastructure security scanning.
 
-**Current CI status: Passing.**
+### Latest reported verification
 
-The workflow validates and tests the configuration without deploying AWS infrastructure or requiring AWS credentials.
+| Check | Result |
+|---|---|
+| Terraform formatting | Passed |
+| Terraform validation | Passed |
+| Terraform tests | Passed |
+| Checkov security scan | 27 passed, 0 failed |
+| GitHub Actions | All green, as last reported |
+
+These checks verify the configuration and automated security controls. They do not, by themselves, prove that a fresh deployment will succeed or that live AWS resources match the latest configuration.
 
 ## Validation
 
-Run these commands from the `terraform` directory:
+Run the following commands from the repository root:
 
 ```bash
-terraform fmt -check -recursive
-terraform init -backend=false
-terraform validate
-terraform test
-terraform plan
+terraform -chdir=terraform fmt -check
+terraform -chdir=terraform init -backend=false
+terraform -chdir=terraform validate
+terraform -chdir=terraform test
+checkov --directory terraform --framework terraform
 ```
 
-These commands check formatting, initialise the provider configuration, validate the Terraform files, run automated tests and preview the proposed changes.
+To preview infrastructure changes when valid AWS credentials are available:
+
+```bash
+terraform -chdir=terraform plan
+```
+
+Always review the plan before applying changes. Planning and deployment may require AWS credentials and appropriate permissions.
 
 ## Current Status
 
-- Terraform configuration and outputs implemented.
-- Five automated assertions covering project configuration and tagging.
-- GitHub repository and version control configured.
-- GitHub Actions workflow passing.
-- Checkov security scanning integrated into CI.
-- AWS infrastructure deployment blocked by an explicit AWS Organizations SCP.
-
-**No VPC or subnet has been successfully deployed by this project.**
-
-## Future Improvements
-
-- Resolve the AWS permission restriction through the account administrator or use an authorised AWS environment.
-- Implement and test the VPC and subnet configuration when deployment is permitted.
-- Expand automated tests to cover infrastructure resource properties.
-- Improve security scanning and document any relevant findings.
-- Evaluate remote Terraform state and state locking when an appropriate backend is available.
-
-## Author
-
-**Aden Ibrahim**
-
-DevOps | Cloud Infrastructure | Terraform | Linux | AWS | CI/CD
-
-GitHub: https://github.com/AdenTechLab
+- AWS networking infrastructure deployed through Terraform.
+- VPC, subnet, Internet Gateway and route table configured.
+- Default security group hardened.
+- VPC Flow Logs configured with KMS encryption and automatic key rotation.
+- CloudWatch log retention configured for one year.
+- IAM permissions for VPC Flow Logs scoped to the required operations.
+- Automated Terraform tests implemented.
+- GitHub Actions CI pipeline
